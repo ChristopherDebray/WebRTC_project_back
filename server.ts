@@ -25,7 +25,13 @@ const io = new Server(httpsServer, ioServerOptions);
 
 io.on("connection", (socket: Socket) => {
     console.log('connected to socket')
+
+    socket.on('test', () => {
+        console.log('test success');
+        socket.emit('testReceived')
+    })
 });
+
 
 app.get('/', (req, res) => {
     res.send('Hello World!')
