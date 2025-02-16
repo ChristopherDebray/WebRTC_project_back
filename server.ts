@@ -17,6 +17,13 @@ const ioServerOptions = {
     }
 }
 
+interface UserSocket {
+    socketId: string,
+    userName: string
+}
+
+const connectedSockets: UserSocket[] = [];
+
 const app = express();
 // cors is a middleware, so we must apply it separatly
 app.use(cors(corsOptions));
@@ -25,10 +32,24 @@ const io = new Server(httpsServer, ioServerOptions);
 
 io.on("connection", (socket: Socket) => {
     console.log('connected to socket')
+    console.log(socket.id);
+    connectedSockets.push({
+        socketId: socket.id,
+        userName: socket.handshake.auth.userName
+    })
+    // Emit a new connected user to all other user
+    io.emit('newConnectedUsers', connectedSockets)
 
-    socket.on('test', () => {
-        console.log('test success');
-        socket.emit('testReceived')
+    socket.on('newIceCandidate', (offerObject) => {
+        console.log(offerObject);
+    })
+
+    socket.on('offerAwaiting', (offerObject) => {
+        socket.emit('offerReceived', offerObject)
+    })
+
+    socket.on('answerAwaiting', (offerObject) => {
+        socket.emit('answerReceived', offerObject)
     })
 });
 
