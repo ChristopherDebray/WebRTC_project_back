@@ -19,7 +19,9 @@ const ioServerOptions = {
 
 interface UserSocket {
     socketId: string,
-    userName: string
+    userName: string,
+    userColor: string,
+    userInitials: string
 }
 
 const connectedSockets: UserSocket[] = [];
@@ -35,7 +37,9 @@ io.on("connection", (socket: Socket) => {
     console.log(socket.id);
     const newUser: UserSocket = {
         socketId: socket.id,
-        userName: socket.handshake.auth.userName
+        userName: socket.handshake.auth.userName,
+        userColor: socket.handshake.auth.userColor,
+        userInitials: socket.handshake.auth.userInitials,
     }
     connectedSockets.push(newUser)
 
