@@ -33,12 +33,16 @@ const io = new Server(httpsServer, ioServerOptions);
 io.on("connection", (socket: Socket) => {
     console.log('connected to socket')
     console.log(socket.id);
-    connectedSockets.push({
+    const newUser: UserSocket = {
         socketId: socket.id,
         userName: socket.handshake.auth.userName
-    })
-    // Emit a new connected user to all other user
-    io.emit('newConnectedUsers', connectedSockets)
+    }
+    connectedSockets.push(newUser)
+
+    // Emit connected users to the to the newly connected user
+    socket.emit('connectedUsersList', connectedSockets.filter((user) => user.socketId !== socket.id));
+    // Broadcast new user to others
+    socket.broadcast.emit('newConnectedUser', newUser);
 
     socket.on('newIceCandidate', (offerObject) => {
         console.log(offerObject);
