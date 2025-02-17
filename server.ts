@@ -8,13 +8,11 @@ const key = fs.readFileSync('cert/create-cert-key.pem');
 const cert = fs.readFileSync('cert/create-cert.pem');
 
 const port = 3000;
-var corsOptions = {
+const corsOptions = {
     origin: process.env.CORS_ORIGIN,
 }
 const ioServerOptions = {
-    cors: {
-        origin: process.env.CORS_ORIGIN,
-    }
+    cors: corsOptions
 }
 
 interface UserSocket {
@@ -24,7 +22,8 @@ interface UserSocket {
     userInitials: string
 }
 
-const connectedSockets: UserSocket[] = [];
+const connectedSockets: Socket[] = [];
+const connectedUserSockets: UserSocket[] = [];
 
 const app = express();
 // cors is a middleware, so we must apply it separatly
@@ -41,10 +40,11 @@ io.on("connection", (socket: Socket) => {
         userColor: socket.handshake.auth.userColor,
         userInitials: socket.handshake.auth.userInitials,
     }
-    connectedSockets.push(newUser)
+    connectedSockets.push(socket)
+    connectedUserSockets.push(newUser)
 
     // Emit connected users to the to the newly connected user
-    socket.emit('connectedUsersList', connectedSockets.filter((user) => user.socketId !== socket.id));
+    socket.emit('connectedUsersList', connectedUserSockets.filter((connectedSocket) => connectedSocket.socketId !== socket.id));
     // Broadcast new user to others
     socket.broadcast.emit('newConnectedUser', newUser);
 
@@ -58,6 +58,16 @@ io.on("connection", (socket: Socket) => {
 
     socket.on('answerAwaiting', (offerObject) => {
         socket.emit('answerReceived', offerObject)
+    })
+
+    socket.on('callUser', (calledUser: UserSocket, callingUser: UserSocket) => {
+        console.log('callUser : ', calledUser.socketId, connectedSockets.find((socket) => socket.id === calledUser.socketId), connectedSockets.map(user => user.id));
+        const calledUserSocket: Socket | undefined = connectedSockets.find((socket) => socket.id === calledUser.socketId)
+        if (!calledUserSocket) {
+            return
+        }
+        calledUserSocket.emit('callingUser', callingUser)
+        
     })
 });
 
