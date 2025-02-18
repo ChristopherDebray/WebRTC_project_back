@@ -32,8 +32,6 @@ const httpsServer = createServer({ key, cert }, app);
 const io = new Server(httpsServer, ioServerOptions);
 
 io.on("connection", (socket: Socket) => {
-    console.log('connected to socket')
-    console.log(socket.id);
     const newUser: UserSocket = {
         socketId: socket.id,
         userName: socket.handshake.auth.userName,
@@ -42,6 +40,7 @@ io.on("connection", (socket: Socket) => {
     }
     connectedSockets.push(socket)
     connectedUserSockets.push(newUser)
+    
 
     // Emit connected users to the to the newly connected user
     socket.emit('connectedUsersList', connectedUserSockets.filter((connectedSocket) => connectedSocket.socketId !== socket.id));
@@ -61,13 +60,20 @@ io.on("connection", (socket: Socket) => {
     })
 
     socket.on('callUser', (calledUser: UserSocket, callingUser: UserSocket) => {
-        console.log('callUser : ', calledUser.socketId, connectedSockets.find((socket) => socket.id === calledUser.socketId), connectedSockets.map(user => user.id));
         const calledUserSocket: Socket | undefined = connectedSockets.find((socket) => socket.id === calledUser.socketId)
         if (!calledUserSocket) {
             return
         }
         calledUserSocket.emit('callingUser', callingUser)
         
+    })
+
+    socket.on('rejectCall', (callingUser: UserSocket) => {
+        const calledUserSocket: Socket | undefined = connectedSockets.find((socket) => socket.id === callingUser.socketId)
+        if (!calledUserSocket) {
+            return;
+        }
+        calledUserSocket.emit('callRejected')
     })
 });
 
