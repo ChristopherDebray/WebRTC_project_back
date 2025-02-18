@@ -68,6 +68,22 @@ io.on("connection", (socket: Socket) => {
         
     })
 
+    socket.on('cancelCall', (calledUser: UserSocket) => {
+        const calledUserSocket: Socket | undefined = connectedSockets.find((socket) => socket.id === calledUser.socketId)
+        if (!calledUserSocket) {
+            return
+        }
+        calledUserSocket.emit('canceledCall')
+    })
+
+    socket.on('acceptCall', (callingUser: UserSocket) => {
+        const calledUserSocket: Socket | undefined = connectedSockets.find((socket) => socket.id === callingUser.socketId)
+        if (!calledUserSocket) {
+            return;
+        }
+        calledUserSocket.emit('acceptedCall')
+    })
+
     socket.on('rejectCall', (callingUser: UserSocket) => {
         const calledUserSocket: Socket | undefined = connectedSockets.find((socket) => socket.id === callingUser.socketId)
         if (!calledUserSocket) {
