@@ -91,6 +91,14 @@ io.on("connection", (socket: Socket) => {
         }
         calledUserSocket.emit('callRejected')
     })
+
+    socket.on('stopCall', (callingUser: UserSocket) => {
+        const calledUserSocket: Socket | undefined = connectedSockets.find((socket) => socket.id === callingUser.socketId)
+        if (!calledUserSocket) {
+            return;
+        }
+        calledUserSocket.emit('callStopped')
+    })
 });
 
 
