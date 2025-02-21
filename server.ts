@@ -32,20 +32,34 @@ const httpsServer = createServer({ key, cert }, app);
 const io = new Server(httpsServer, ioServerOptions);
 
 io.on("connection", (socket: Socket) => {
-    const newUser: UserSocket = {
-        socketId: socket.id,
-        userName: socket.handshake.auth.userName,
-        userColor: socket.handshake.auth.userColor,
-        userInitials: socket.handshake.auth.userInitials,
-    }
+    const { userName, userColor, userInitials } = socket.handshake.auth;
+
+    /**
+     * Find and remove the socket from the connected sockets
+     * We replace the socket in the connectedusersocket but not the one in the connected sockets
+     */
+    const existingUserIndex = connectedSockets.findIndex(user => user.handshake.auth.userName === userName);
     connectedSockets.push(socket)
-    connectedUserSockets.push(newUser)
+
+    if (existingUserIndex >= 0) {
+        connectedSockets.splice(existingUserIndex, 1);
+        const connectedUserSocket = connectedUserSockets.find(user => user.userName === userName);
+        connectedUserSocket.socketId = socket.id
+    } else {
+        const newUser: UserSocket = {
+            socketId: socket.id,
+            userName: userName,
+            userColor: userColor,
+            userInitials: userInitials,
+        }
     
+        connectedUserSockets.push(newUser)
+        // Broadcast new user to others
+        socket.broadcast.emit('newConnectedUser', newUser);
+    }
 
     // Emit connected users to the to the newly connected user
-    socket.emit('connectedUsersList', connectedUserSockets.filter((connectedSocket) => connectedSocket.socketId !== socket.id));
-    // Broadcast new user to others
-    socket.broadcast.emit('newConnectedUser', newUser);
+    socket.emit('connectedUsersList', connectedUserSockets.filter((connectedUserSocket) => connectedUserSocket.userName !== socket.handshake.auth.userName));
 
     socket.on('newIceCandidate', (offerObject) => {
         console.log(offerObject);
@@ -60,16 +74,16 @@ io.on("connection", (socket: Socket) => {
     })
 
     socket.on('callUser', (calledUser: UserSocket, callingUser: UserSocket) => {
-        const calledUserSocket: Socket | undefined = connectedSockets.find((socket) => socket.id === calledUser.socketId)
-        if (!calledUserSocket) {
+        const calledUserSocket: UserSocket | undefined = connectedUserSockets.find((socket) => socket.userName === calledUser.userName)
+        const calledSocket: Socket | undefined = connectedSockets.find((socket) => socket.id === calledUserSocket.socketId)
+        if (!calledSocket) {
             return
         }
-        calledUserSocket.emit('callingUser', callingUser)
-        
+        calledSocket.emit('callingUser', callingUser)
     })
 
     socket.on('cancelCall', (calledUser: UserSocket) => {
-        const calledUserSocket: Socket | undefined = connectedSockets.find((socket) => socket.id === calledUser.socketId)
+        const calledUserSocket: Socket | undefined = connectedSockets.find((socket) => socket.handshake.auth.userName === calledUser.userName)
         if (!calledUserSocket) {
             return
         }
@@ -77,15 +91,19 @@ io.on("connection", (socket: Socket) => {
     })
 
     socket.on('acceptCall', (callingUser: UserSocket) => {
-        const calledUserSocket: Socket | undefined = connectedSockets.find((socket) => socket.id === callingUser.socketId)
-        if (!calledUserSocket) {
+        const calledUserSocket: UserSocket | undefined = connectedUserSockets.find((socket) => socket.userName === callingUser.userName)
+        const calledSocket: Socket | undefined = connectedSockets.find((socket) => socket.id === calledUserSocket.socketId)
+        console.log(connectedUserSockets);
+        console.log(calledUserSocket);
+        
+        if (!calledSocket) {
             return;
         }
-        calledUserSocket.emit('acceptedCall')
+        calledSocket.emit('acceptedCall')
     })
 
     socket.on('rejectCall', (callingUser: UserSocket) => {
-        const calledUserSocket: Socket | undefined = connectedSockets.find((socket) => socket.id === callingUser.socketId)
+        const calledUserSocket: Socket | undefined = connectedSockets.find((socket) => socket.handshake.auth.userName === callingUser.userName)
         if (!calledUserSocket) {
             return;
         }
@@ -93,7 +111,7 @@ io.on("connection", (socket: Socket) => {
     })
 
     socket.on('stopCall', (callingUser: UserSocket) => {
-        const calledUserSocket: Socket | undefined = connectedSockets.find((socket) => socket.id === callingUser.socketId)
+        const calledUserSocket: Socket | undefined = connectedSockets.find((socket) => socket.handshake.auth.userName === callingUser.userName)
         if (!calledUserSocket) {
             return;
         }
