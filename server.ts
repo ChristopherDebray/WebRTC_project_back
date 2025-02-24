@@ -4,7 +4,7 @@ import { Server, Socket } from "socket.io";
 import * as fs from 'fs';
 import cors from 'cors';
 import { attachCallHandlers } from './handlers/callHandlers';
-import { attachRtcHandlers } from './handlers/rtcHandlers';
+import { attachSignalingHandlers } from './handlers/signalingHandlers';
 import { UserSocket } from './types/UserSocket';
 
 const key = fs.readFileSync('cert/create-cert-key.pem');
@@ -56,8 +56,8 @@ io.on("connection", (socket: Socket) => {
     // Emit connected users to the to the newly connected user
     socket.emit('user:list', connectedUserSockets.filter((connectedUserSocket) => connectedUserSocket.userName !== socket.handshake.auth.userName));
 
-    attachCallHandlers(socket, connectedSockets)
-    attachRtcHandlers(socket, connectedSockets)
+    attachCallHandlers(socket, connectedSockets);
+    attachSignalingHandlers(socket, connectedSockets);
 });
 
 httpsServer.listen(port, () => {
